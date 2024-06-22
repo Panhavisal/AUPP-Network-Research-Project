@@ -9,6 +9,43 @@ log_message() {
     echo "$(date) - $1" | tee -a "$LOG_FILE"
 }
 
+# Function to check and install a package
+check_and_install() {
+    if ! dpkg -s $1 &> /dev/null; then
+        log_message "$1 is not installed. Installing..."
+        sudo apt update >> "$LOG_FILE" 2>&1
+        sudo apt install $1 -y >> "$LOG_FILE" 2>&1
+    else
+        log_message "$1 is already installed."
+    fi
+}
+
+# Check for Tor
+check_and_install tor
+
+# Check for WHOIS
+check_and_install whois
+
+# Check for GeoIP database
+check_and_install geoip-database
+log_message "Updating GeoIP database..."
+sudo geoipupdate >> "$LOG_FILE" 2>&1 || log_message "Failed to update GeoIP database. This may affect country lookup accuracy."
+
+# Check for nipe
+if [ ! -d "/opt/nipe" ]; then
+    log_message "nipe is not installed. Installing..."
+    sudo git clone https://github.com/htrgouvea/nipe /opt/nipe >> "$LOG_FILE" 2>&1
+    cd /opt/nipe
+    sudo cpanm --installdeps . >> "$LOG_FILE" 2>&1
+    sudo perl nipe.pl install >> "$LOG_FILE" 2>&1
+else
+    log_message "nipe is already installed. Updating..."
+    cd /opt/nipe
+    sudo git pull >> "$LOG_FILE" 2>&1
+    sudo cpanm --installdeps . >> "$LOG_FILE" 2>&1
+    sudo perl nipe.pl install >> "$LOG_FILE" 2>&1
+fi
+
 # Function to check Tor status
 check_tor_status() {
     log_message "Checking Tor status..."
@@ -23,8 +60,6 @@ check_tor_status() {
 
     if curl -s https://check.torproject.org | grep -q "Congratulations"; then
         tor_info=$(curl -s "https://ipapi.co/${current_ip}/json/")
-        #tor_country=$(echo $tor_info | jq -r .country_name)
-        #tor_city=$(echo $tor_info | jq -r .city)
         log_message "Tor is working properly."
         log_message "Tor IP: $current_ip"
         if [ -z "$tor_ip_country" ]; then
@@ -92,29 +127,11 @@ remote_login_and_check() {
     fi
 }
 
-# Check if required packages are installed
-required_packages=(tor curl git build-essential libssl-dev libcurl4-openssl-dev libnet-ssleay-perl perl cpanminus geoip-bin whois sshpass nmap)
+# Check if other required packages are installed
+required_packages=(curl git build-essential libssl-dev libcurl4-openssl-dev libnet-ssleay-perl perl cpanminus geoip-bin sshpass nmap)
 for pkg in "${required_packages[@]}"; do
-    if ! dpkg -s $pkg &> /dev/null; then
-        log_message "$pkg is not installed. Installing..."
-        sudo apt update >> "$LOG_FILE" 2>&1
-        sudo apt install $pkg -y >> "$LOG_FILE" 2>&1
-    fi
+    check_and_install $pkg
 done
-
-# Install or update nipe
-if [ ! -d "/opt/nipe" ]; then
-    log_message "Installing nipe..."
-    sudo git clone https://github.com/htrgouvea/nipe /opt/nipe >> "$LOG_FILE" 2>&1
-else
-    log_message "Updating nipe..."
-    cd /opt/nipe
-    sudo git pull >> "$LOG_FILE" 2>&1
-fi
-
-cd /opt/nipe
-sudo cpanm --installdeps . >> "$LOG_FILE" 2>&1
-sudo perl nipe.pl install >> "$LOG_FILE" 2>&1
 
 # Ensure Tor service is running
 if ! systemctl is-active --quiet tor; then
