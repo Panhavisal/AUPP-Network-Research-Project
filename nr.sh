@@ -72,14 +72,23 @@ remote_login_and_check() {
 
     log_message "Hostname for WHOIS and nmap: $website"
 
-    sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p $remote_port "$remote_user@$remote_ip" "
-        echo 'Remote login successful'
+    #sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p $remote_port "$remote_user@$remote_ip" "
+    #    echo \"Remote login successful\"
+    #    remote_ip=$(curl -s https://api.ipify.org)
+    #    echo \"'Remote Server IP: $remote_ip'\"
+    #    remote_country=$(geoiplookup $remote_ip | awk "{str=\"\"; for(i=4;i<=NF;i++) str=str\" \"$i; print str}")
+    #    whois \"$website\"
+    #" > "$whois_file"
+
+    sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p $remote_port "$remote_user@$remote_ip" '
+        echo "Remote login successful"
         remote_ip=$(curl -s https://api.ipify.org)
         echo "Remote Server IP: $remote_ip"
-        remote_country=$(geoiplookup $remote_ip | awk "{str=\"\"; for(i=4;i<=NF;i++) str=str\" \"$i; print str}")
-        whois \"$website\"
-    " > "$whois_file"
-    
+        remote_country=$(geoiplookup $remote_ip | awk "{str=\"\"; for(i=4;i<=NF;i++) str=str\" \"\$i; print str}")
+        echo "Remote country: $remote_country"
+        whois "$website"
+' | tee "$whois_file"
+
     # Check if WHOIS lookup was successful
     if [ $? -eq 0 ] && [ -f "$whois_file" ]; then
         log_message "WHOIS lookup completed and saved successfully."
