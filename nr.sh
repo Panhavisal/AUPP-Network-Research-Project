@@ -83,7 +83,8 @@ remote_login_and_check() {
     # Check if WHOIS lookup was successful
     if [ $? -eq 0 ] && [ -f "$whois_file" ]; then
         log_message "WHOIS lookup completed and saved successfully."
-        log_message "WHOIS file location: $whois_file"
+        log_message "Path /opt/nipe"
+        log_message "WHOIS fFile name: $whois_file"
         log_message "WHOIS file size: $(du -h "$whois_file" | cut -f1)"
     else
         log_message "WHOIS lookup failed or file not saved."
@@ -99,7 +100,8 @@ remote_login_and_check() {
     # Check if nmap scan was successful
     if [ $? -eq 0 ] && [ -f "$nmap_file" ]; then
         log_message "nmap scan completed and saved successfully."
-        log_message "nmap result file location: $nmap_file"
+        log_message "Path /opt/nipe"
+        log_message "nmap result File name: $nmap_file"
         log_message "nmap file size: $(du -h "$nmap_file" | cut -f1)"
         return 0
     else
