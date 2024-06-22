@@ -21,8 +21,8 @@ check_tor_status() {
     
     if curl -s https://check.torproject.org | grep -q "Congratulations"; then
         tor_info=$(curl -s "https://ipapi.co/${current_ip}/json/")
-        tor_country=$(echo $tor_info | jq -r .country_name)
-        tor_city=$(echo $tor_info | jq -r .city)
+        #tor_country=$(echo $tor_info | jq -r .country_name)
+        #tor_city=$(echo $tor_info | jq -r .city)
         log_message "Tor is working properly."
         log_message "Tor IP: $current_ip"
         if [ -z "$tor_ip_country" ]; then
@@ -38,19 +38,19 @@ check_tor_status() {
     fi
 }
 
-# Function to perform remote login, WHOIS lookup, and nmap scan
+# Function to perform remote login and check remote server IP
 remote_login_and_check() {
     local remote_ip="192.168.88.180"
     local remote_port="51322"
     local remote_user="tc"
     local remote_password="tc"
     local website="$1"
-    local whois_file="$(pwd)/${website}_full_whois.txt"
-    local nmap_file="$(pwd)/${website}_nmap_scan.txt"
+    local result_file="$(pwd)/${website}_full_whois.txt"
 
     log_message "Attempting to log in to remote server $remote_ip on port $remote_port..."
     
-    # Connect to Server B, perform WHOIS lookup, nmap scan, and capture the output
+    # Connect to Server B, perform WHOIS lookup, and capture the output
+    log_message "About to perform WHOIS lookup for $website"
     sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p $remote_port "$remote_user@$remote_ip" "
         echo 'Remote login successful'
         remote_ip=\$(curl -s https://api.ipify.org)
@@ -60,25 +60,18 @@ remote_login_and_check() {
         
         echo \"Performing WHOIS lookup for $website...\"
         whois \"$website\"
-        
-        echo \"\nPerforming nmap scan for $website...\"
-        nmap -sV \"$website\"
-    " > "$whois_file" 2> "$nmap_file"
+    " > "$result_file"
     
     # Check if the SSH command was successful
     if [ $? -eq 0 ]; then
-        log_message "Remote login successful, WHOIS and nmap scan completed."
-        if [ -f "$whois_file" ]; then
-            log_message "WHOIS file was successfully created at: $whois_file"
-            log_message "WHOIS file size: $(du -h "$whois_file" | cut -f1)"
+        log_message "Remote login successful, IP info retrieved, and full WHOIS lookup saved."
+        log_message "WHOIS lookup completed. Checking if file was saved."
+        if [ -f "$result_file" ]; then
+            log_message "File was successfully created at: $result_file"
+            log_message "File size: $(du -h "$result_file" | cut -f1)"
         else
-            log_message "WHOIS file was not created at: $whois_file"
-        fi
-        if [ -f "$nmap_file" ]; then
-            log_message "Nmap scan file was successfully created at: $nmap_file"
-            log_message "Nmap file size: $(du -h "$nmap_file" | cut -f1)"
-        else
-            log_message "Nmap scan file was not created at: $nmap_file"
+            log_message "File was not created at: $result_file"
+            log_message "Check permissions and remote connection."
         fi
         return 0
     else
