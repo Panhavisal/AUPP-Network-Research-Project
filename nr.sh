@@ -52,50 +52,65 @@ remote_login_and_check() {
     local remote_user="tc"
     local remote_password="tc"
     local website="$1"
-    local whois_file="${SCRIPT_DIR}/${website}_full_whois.txt"
-    local nmap_file="${SCRIPT_DIR}/${website}_nmap_result.txt"
-    local remote_temp_whois="/tmp/whois_temp.txt"
-    local remote_temp_nmap="/tmp/nmap_temp.txt"
+     local whois_file="$SCRIPT_DIR/${website}_full_whois.txt"
+    local nmap_file="$SCRIPT_DIR/${website}_nmap_result.txt"
 
     log_message "Attempting to log in to remote server $remote_ip on port $remote_port..."
 
-    if sshpass -p "$remote_password" ssh -o ServerAliveInterval=60 -o StrictHostKeyChecking=no -p "$remote_port" "$remote_user@$remote_ip" "
+    # Fetch remote IP and Country
+    #remote_info=$(sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p "$remote_port" "$remote_user@$remote_ip" '
+    #    echo "Remote login successful"
+    #    remote_ip=$(curl -s https://api.ipify.org)
+    #    remote_country=$(geoiplookup $remote_ip | awk "{str=\"\"; for(i=4;i<=NF;i++) str=str\" \"$i; print str}")
+    #    echo "Remote Server IP: $remote_ip"
+    #    echo "Remote Server Country: $remote_country"
+    #')
+    #remote_ip=$(echo "$remote_info" | grep "Remote Server IP" | awk '{print $4}')
+    #remote_country=$(geoiplookup $remote_ip | awk '{str=""; for(i=4;i<=NF;i++) str=str" "$i; print str}')
+    #echo "Remote IP fetched: $remote_ip"
+    #echo "Remote Server Country: $remote_country"
+
+    log_message "Hostname for WHOIS and nmap: $website"
+
+    sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p $remote_port "$remote_user@$remote_ip" "
         echo 'Remote login successful'
-        remote_ip=\$(curl -s https://api.ipify.org)
-        remote_country=\$(geoiplookup \$remote_ip | awk '{str=\"\"; for(i=4;i<=NF;i++) str=str\" \"\$i; print str}')
-        echo \"Remote Server IP: \$remote_ip\"
-        echo \"Remote Server Country: \$remote_country\"
-
-        whois $website > $remote_temp_whois &&
-        echo 'WHOIS lookup completed.'
-
-        nmap $website > $remote_temp_nmap &&
-        echo 'nmap scan completed.'
-    "; then
-        log_message "Remote login, WHOIS lookup, and nmap scan completed successfully."
-
-        # Copy files from remote server to local machine
-        sshpass -p "$remote_password" scp -P "$remote_port" "$remote_user@$remote_ip:$remote_temp_whois" "$whois_file"
-        sshpass -p "$remote_password" scp -P "$remote_port" "$remote_user@$remote_ip:$remote_temp_nmap" "$nmap_file"
+        remote_ip=$(curl -s https://api.ipify.org)
+        echo "Remote Server IP: $remote_ip"
+        remote_country=$(geoiplookup $remote_ip | awk "{str=\"\"; for(i=4;i<=NF;i++) str=str\" \"$i; print str}")
+        whois \"$website\"
+    " > "$whois_file"
+    
+    # Check if WHOIS lookup was successful
+    if [ $? -eq 0 ] && [ -f "$whois_file" ]; then
+        log_message "WHOIS lookup completed and saved successfully."
+        log_message "WHOIS file location: $whois_file"
+        log_message "WHOIS file size: $(du -h "$whois_file" | cut -f1)"
     else
-        log_message "Remote operations failed."
+        log_message "WHOIS lookup failed or file not saved."
         return 1
     fi
-
-    # Display nmap results for debugging
-    log_message "nmap scan results:"
-    if [ -f "$nmap_file" ]; then
-        cat "$nmap_file"
+    
+    # Perform nmap scan
+    log_message "Performing nmap scan for $website..."
+    sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p $remote_port "$remote_user@$remote_ip" "
+        nmap \"$website\"
+    " > "$nmap_file"
+    
+    # Check if nmap scan was successful
+    if [ $? -eq 0 ] && [ -f "$nmap_file" ]; then
+        log_message "nmap scan completed and saved successfully."
+        log_message "nmap result file location: $nmap_file"
+        log_message "nmap file size: $(du -h "$nmap_file" | cut -f1)"
+        return 0
     else
-        log_message "nmap results file not found."
+        log_message "nmap scan failed or file not saved."
+        return 1
     fi
-
-    return 0
 }
 
 # Install necessary packages on local server
 log_message "Checking and installing necessary packages on local server..."
-packages=( "curl" "geoip-bin" "whois" "nmap" "sshpass" "jq" "geoipupdate" "openssh-client" )
+packages=( "curl" "geoip-bin" "whois" "nmap" "sshpass" "jq" "geoipupdate" )
 for pkg in "${packages[@]}"; do
     if dpkg -l | grep -qw "$pkg"; then
         log_message "$pkg is already installed."
