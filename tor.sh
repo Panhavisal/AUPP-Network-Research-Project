@@ -2,24 +2,23 @@
 
 LOG_FILE="/var/log/tor_setup.log"
 
+cred='\033[1;31m'  # Red color and bold
+creset='\033[0m'   # Reset color and style
+
 # Function to log messages
 log_message() {
     echo "$(date) - $1" | tee -a "$LOG_FILE"
 }
 
-#New
 # Function to check Tor status
 check_tor_status() {
     log_message "Checking Tor status..."
     current_ip=$(curl -s https://api.ipify.org)
-    current_tor_country=$(geoiplookup $current_ip | awk '{print $4$5}')
+    current_tor_country=$(geoiplookup $current_ip | awk '{str=""; for(i=4;i<=NF;i++) str=str" "$i; print str}')
     log_message "Current IP: $current_ip"
     log_message "Current Country: $current_tor_country (Local DB)"
 
-    #Custom
-    html_content=$(curl -s "https://whatismyipaddress.com/ip/$current_ip")
-    tor_ip_country=$(whois $current_ip | grep -i "country" | awk '{print $2}')
-    #tor_country_full=$(echo "$html_content" | grep -oP '<th>Country:</th><td>\K[^<]*')
+    tor_ip_country=$(whois $current_ip | grep -i "country" | tail -n 1 | awk '{print $2}' )
     
     if curl -s https://check.torproject.org | grep -q "Congratulations"; then
         tor_info=$(curl -s "https://ipapi.co/${current_ip}/json/")
@@ -27,9 +26,12 @@ check_tor_status() {
         tor_city=$(echo $tor_info | jq -r .city)
         log_message "Tor is working properly."
         log_message "Tor IP: $current_ip"
-        log_message "Tor IP: $tor_ip_country"
-        #log_message "Tor Country: $tor_ip_country"
-        #log_message "Tor Location: $tor_city, $tor_country"
+        if [ -z "$tor_ip_country" ]; then
+            log_message "Current Country: Load Failed (WHOIS)"
+        else
+            log_message "Current Country: $tor_ip_country (WHOIS)"
+        fi        
+        log_message "Current Country: $current_tor_country (Local DB)"
         return 0
     else
         log_message "Tor configuration check failed."
@@ -37,8 +39,44 @@ check_tor_status() {
     fi
 }
 
+# Function to perform remote login and check remote server IP
+remote_login_and_check() {
+    local remote_ip="192.168.88.28"
+    local remote_user="tc"
+    local remote_password="tc"
+
+    log_message "Attempting to log in to remote server $remote_ip..."
+    
+    if sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no "$remote_user@$remote_ip" '
+        echo "Remote login successful"
+        remote_ip=$(curl -s https://api.ipify.org)
+        remote_country=$(curl -s https://ipapi.co/${remote_ip}/country_name/)
+        echo "Remote Server IP: $remote_ip"
+        echo "Remote Server Country: $remote_country"
+    '; then
+        log_message "Remote login successful and IP info retrieved"
+        return 0
+    else
+        log_message "Remote login failed"
+        return 1
+    fi
+}
+
+# Function to visit website through Tor
+visit_website() {
+    local website=$1
+    log_message "Attempting to visit $website through Tor..."
+    curl --socks5 localhost:9050 -s "$website" > /dev/null
+    if [ $? -eq 0 ]; then
+        log_message "Successfully visited $website through Tor."
+    else
+        log_message "Failed to visit $website through Tor."
+    fi
+}
+
 # Check if required packages are installed
-for pkg in tor curl git build-essential libssl-dev libcurl4-openssl-dev libnet-ssleay-perl perl cpanminus; do
+required_packages=(tor curl git build-essential libssl-dev libcurl4-openssl-dev libnet-ssleay-perl perl cpanminus geoip-bin whois sshpass)
+for pkg in "${required_packages[@]}"; do
     if ! dpkg -s $pkg &> /dev/null; then
         log_message "$pkg is not installed. Installing..."
         sudo apt update >> "$LOG_FILE" 2>&1
@@ -46,20 +84,19 @@ for pkg in tor curl git build-essential libssl-dev libcurl4-openssl-dev libnet-s
     fi
 done
 
-# Install nipe if not already installed
+# Install or update nipe
 if [ ! -d "/opt/nipe" ]; then
     log_message "Installing nipe..."
     sudo git clone https://github.com/htrgouvea/nipe /opt/nipe >> "$LOG_FILE" 2>&1
-    cd /opt/nipe
-    sudo cpanm --installdeps . >> "$LOG_FILE" 2>&1
-    sudo perl nipe.pl install >> "$LOG_FILE" 2>&1
 else
     log_message "Updating nipe..."
     cd /opt/nipe
     sudo git pull >> "$LOG_FILE" 2>&1
-    sudo cpanm --installdeps . >> "$LOG_FILE" 2>&1
-    sudo perl nipe.pl install >> "$LOG_FILE" 2>&1
 fi
+
+cd /opt/nipe
+sudo cpanm --installdeps . >> "$LOG_FILE" 2>&1
+sudo perl nipe.pl install >> "$LOG_FILE" 2>&1
 
 # Ensure Tor service is running
 if ! systemctl is-active --quiet tor; then
@@ -88,18 +125,22 @@ else
     log_message "Nipe status after restart: $nipe_status"
 fi
 
-echo "Initial Tor setup complete. Entering monitoring mode..."
-log_message "Entering monitoring mode."
+# Check Tor status once
+if check_tor_status; then
+    log_message "Tor is functioning correctly. Proceeding to website visit."
+else
+    log_message "Tor configuration check failed. Proceeding to website visit anyway."
+fi
 
-# Main loop to keep the script running and check Tor status
-while true; do
-    if check_tor_status; then
-        log_message "Tor is functioning correctly. Waiting for 5 minutes before next check..."
-        sleep 300  # Wait for 5 minutes
-    else
-        log_message "Attempting to restart nipe..."
-        sudo perl /opt/nipe/nipe.pl restart >> "$LOG_FILE" 2>&1
-        log_message "Nipe restarted."
-        sleep 30  # Wait for 30 seconds before rechecking
-    fi
-done
+# Ask user for website input
+read -p "Enter a website to visit through Tor (include http:// or https://): " website
+#visit_website "$website"
+
+# Attempt remote login and check remote server IP
+if remote_login_and_check; then
+    log_message "Remote login successful and IP info retrieved. Script execution complete."
+else
+    log_message "Remote login failed. Script execution complete."
+fi
+
+log_message "Script execution finished."
