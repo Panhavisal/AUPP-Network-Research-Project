@@ -59,25 +59,33 @@ remote_login_and_check() {
 
     echo 'Remote login successful'
     remote_info=$(sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "curl -s https://api.ipify.org && geoiplookup \$(curl -s https://api.ipify.org) | awk '{str=\"\"; for(i=4;i<=NF;i++) str=str\" \"\$i; print str}'")
-    remote_ip=$(echo "$remote_info" | head -n 1)
-    remote_country=$(echo "$remote_info" | tail -n 1)
+    remote_ip=$(echo "$remote_info" | head -n 1 | awk '{print $1}')
+    remote_country=$(echo "$remote_info" | tail -n 1 | awk '{print $2}')
     echo "Remote IP fetched: $remote_ip"
+    echo "Remote Server Country: $remote_country"
+
+    # Log the hostname for debugging
+    log_message "Hostname for WHOIS and nmap: $website"
 
     # Connect to Server B and perform WHOIS lookup
     log_message "Performing WHOIS lookup..."
-    sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "whois $website" > "$whois_file"
+    sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "whois $website" > "$whois_file" 2>&1
     log_message "WHOIS lookup completed. Results saved to $whois_file."
 
     # Connect to Server B and perform nmap scan
     log_message "Performing nmap scan..."
-    sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "nmap -Pn -A -T4 $website" > "$nmap_file"
+    sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "nmap $website" > "$nmap_file" 2>&1
     log_message "nmap scan completed. Results saved to $nmap_file."
+
+    # Display nmap results for debugging
+    log_message "nmap scan results:"
+    cat "$nmap_file"
 
     return 0
 }
 
-# Install necessary packages
-log_message "Checking and installing necessary packages..."
+# Install necessary packages on local server
+log_message "Checking and installing necessary packages on local server..."
 packages=( "curl" "geoip-bin" "whois" "nmap" "sshpass" "jq" "geoipupdate" )
 for pkg in "${packages[@]}"; do
     if dpkg -l | grep -qw "$pkg"; then
@@ -90,10 +98,10 @@ for pkg in "${packages[@]}"; do
     fi
 done
 
-# Update GeoIP database
+# Update GeoIP database on local server
 update_geoip_db
 
-# Check for and install/update nipe
+# Check for and install/update nipe on local server
 if [ ! -d "/opt/nipe" ]; then
     log_message "Nipe is not installed. Installing nipe..."
     sudo git clone https://github.com/htrgouvea/nipe /opt/nipe >> "$LOG_FILE" 2>&1
@@ -109,7 +117,7 @@ cd /opt/nipe
 sudo cpanm --installdeps . >> "$LOG_FILE" 2>&1
 sudo perl nipe.pl install >> "$LOG_FILE" 2>&1
 
-# Ensure Tor service is running
+# Ensure Tor service is running on local server
 if ! systemctl is-active --quiet tor; then
     log_message "Tor is not running. Starting Tor service..."
     sudo systemctl start tor >> "$LOG_FILE" 2>&1
@@ -118,12 +126,12 @@ else
     log_message "Tor service is already running."
 fi
 
-# Start nipe
+# Start nipe on local server
 log_message "Starting nipe..."
 sudo perl /opt/nipe/nipe.pl start >> "$LOG_FILE" 2>&1
 sleep 10  # Give nipe some time to initialize
 
-# Check nipe status
+# Check nipe status on local server
 nipe_status=$(sudo perl /opt/nipe/nipe.pl status)
 log_message "Nipe status: $nipe_status"
 
@@ -137,18 +145,18 @@ else
     log_message "Nipe status after restart: $nipe_status"
 fi
 
-# Check Tor status once
+# Check Tor status once on local server
 if check_tor_status; then
     log_message "Tor is functioning correctly. Proceeding to website input."
 else
     log_message "Tor configuration check failed. Proceeding to website input anyway."
 fi
 
-# Ask user for website input on Server A
+# Ask user for website input on local server
 read -p "Enter a website to SCAN: " website
 log_message "User entered website: $website"
 
-# Attempt remote login, WHOIS lookup, and nmap scan
+# Attempt remote login, WHOIS lookup, and nmap scan on remote server
 if remote_login_and_check "$website"; then
     log_message "Remote operations completed successfully. Script execution complete."
 else
