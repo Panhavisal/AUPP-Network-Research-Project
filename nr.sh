@@ -19,6 +19,8 @@ check_tor_status() {
 
     tor_ip_country=$(whois $current_ip | grep -i "country" | tail -n 1 | awk '{print $2}' )
     
+    log_message "Verifying TOR Connection..."
+
     if curl -s https://check.torproject.org | grep -q "Congratulations"; then
         tor_info=$(curl -s "https://ipapi.co/${current_ip}/json/")
         #tor_country=$(echo $tor_info | jq -r .country_name)
@@ -38,19 +40,20 @@ check_tor_status() {
     fi
 }
 
-# Function to perform remote login and check remote server IP
+# Function to perform remote login, WHOIS lookup, and nmap scan
 remote_login_and_check() {
     local remote_ip="192.168.88.180"
     local remote_port="51322"
     local remote_user="tc"
     local remote_password="tc"
     local website="$1"
-    local result_file="$(pwd)/${website}_full_whois.txt"
+    local whois_file="$(pwd)/${website}_full_whois.txt"
+    local nmap_file="$(pwd)/${website}_nmap_result.txt"
 
     log_message "Attempting to log in to remote server $remote_ip on port $remote_port..."
     
-    # Connect to Server B, perform WHOIS lookup, and capture the output
-    log_message "About to perform WHOIS lookup for $website"
+    # Connect to Server B and perform WHOIS lookup
+    log_message "Performing WHOIS lookup for $website..."
     sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p $remote_port "$remote_user@$remote_ip" "
         echo 'Remote login successful'
         remote_ip=\$(curl -s https://api.ipify.org)
@@ -58,37 +61,34 @@ remote_login_and_check() {
         echo \"Remote Server IP: \$remote_ip\"
         echo \"Remote Server Country: \$remote_country\"
         
-        echo \"Performing WHOIS lookup for $website...\"
         whois \"$website\"
-    " > "$result_file"
+    " > "$whois_file"
     
-    # Check if the SSH command was successful
-    if [ $? -eq 0 ]; then
-        log_message "Remote login successful, IP info retrieved, and full WHOIS lookup saved."
-        log_message "WHOIS lookup completed. Checking if file was saved."
-        if [ -f "$result_file" ]; then
-            log_message "File was successfully created at: $result_file"
-            log_message "File size: $(du -h "$result_file" | cut -f1)"
-        else
-            log_message "File was not created at: $result_file"
-            log_message "Check permissions and remote connection."
-        fi
-        return 0
+    # Check if WHOIS lookup was successful
+    if [ $? -eq 0 ] && [ -f "$whois_file" ]; then
+        log_message "WHOIS lookup completed and saved successfully."
+        log_message "WHOIS file location: $whois_file"
+        log_message "WHOIS file size: $(du -h "$whois_file" | cut -f1)"
     else
-        log_message "Remote login failed"
+        log_message "WHOIS lookup failed or file not saved."
         return 1
     fi
-}
-
-# Function to visit website through Tor
-visit_website() {
-    local website=$1
-    log_message "Attempting to visit $website through Tor..."
-    curl --socks5 localhost:9050 -s "$website" > /dev/null
-    if [ $? -eq 0 ]; then
-        log_message "Successfully visited $website through Tor."
+    
+    # Perform nmap scan
+    log_message "Performing nmap scan for $website..."
+    sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p $remote_port "$remote_user@$remote_ip" "
+        nmap \"$website\"
+    " > "$nmap_file"
+    
+    # Check if nmap scan was successful
+    if [ $? -eq 0 ] && [ -f "$nmap_file" ]; then
+        log_message "nmap scan completed and saved successfully."
+        log_message "nmap result file location: $nmap_file"
+        log_message "nmap file size: $(du -h "$nmap_file" | cut -f1)"
+        return 0
     else
-        log_message "Failed to visit $website through Tor."
+        log_message "nmap scan failed or file not saved."
+        return 1
     fi
 }
 
