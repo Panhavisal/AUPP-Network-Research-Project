@@ -9,43 +9,6 @@ log_message() {
     echo "$(date) - $1" | tee -a "$LOG_FILE"
 }
 
-# Function to check and install a package
-check_and_install() {
-    if ! dpkg -s $1 &> /dev/null; then
-        log_message "$1 is not installed. Installing..."
-        sudo apt update >> "$LOG_FILE" 2>&1
-        sudo apt install $1 -y >> "$LOG_FILE" 2>&1
-    else
-        log_message "$1 is already installed."
-    fi
-}
-
-# Check for Tor
-check_and_install tor
-
-# Check for WHOIS
-check_and_install whois
-
-# Check for GeoIP database
-check_and_install geoip-database
-log_message "Updating GeoIP database..."
-sudo geoipupdate >> "$LOG_FILE" 2>&1 || log_message "Failed to update GeoIP database. This may affect country lookup accuracy."
-
-# Check for nipe
-if [ ! -d "/opt/nipe" ]; then
-    log_message "nipe is not installed. Installing..."
-    sudo git clone https://github.com/htrgouvea/nipe /opt/nipe >> "$LOG_FILE" 2>&1
-    cd /opt/nipe
-    sudo cpanm --installdeps . >> "$LOG_FILE" 2>&1
-    sudo perl nipe.pl install >> "$LOG_FILE" 2>&1
-else
-    log_message "nipe is already installed. Updating..."
-    cd /opt/nipe
-    sudo git pull >> "$LOG_FILE" 2>&1
-    sudo cpanm --installdeps . >> "$LOG_FILE" 2>&1
-    sudo perl nipe.pl install >> "$LOG_FILE" 2>&1
-fi
-
 # Function to check Tor status
 check_tor_status() {
     log_message "Checking Tor status..."
@@ -55,7 +18,7 @@ check_tor_status() {
     log_message "Current Country: $current_tor_country (Local DB)"
 
     tor_ip_country=$(whois $current_ip | grep -i "country" | tail -n 1 | awk '{print $2}' )
-    
+
     log_message "Verifying TOR Connection..."
 
     if curl -s https://check.torproject.org | grep -q "Congratulations"; then
@@ -66,7 +29,7 @@ check_tor_status() {
             log_message "Current Country: Load Failed (WHOIS)"
         else
             log_message "Current Country: $tor_ip_country (WHOIS)"
-        fi        
+        fi
         log_message "Current Country: $current_tor_country (Local DB)"
         return 0
     else
@@ -86,52 +49,52 @@ remote_login_and_check() {
     local nmap_file="$(pwd)/${website}_nmap_result.txt"
 
     log_message "Attempting to log in to remote server $remote_ip on port $remote_port..."
-    
+
+    echo 'Remote login successful'
+    remote_ip=$(sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "curl -s https://api.ipify.org")
+    echo "Remote IP fetched: $remote_ip"
+    #remote_country=$(sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "curl -s https://ipgeolocation.io/ip-location/${remote_ip}?fields=country_name" | jq -r '.country_name')
+    remote_country=$(geoiplookup $remote_ip | awk '{str=""; for(i=4;i<=NF;i++) str=str" "$i; print str}')
+    #remote_country=$(sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "geoiplookup $remote_ip | awk '{str=""; for(i=4;i<=NF;i++) str=str" "$i; print str}'")
+    echo "Remote Server Country: $remote_country"
+
     # Connect to Server B and perform WHOIS lookup
-    log_message "Performing WHOIS lookup for $website..."
-    sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p $remote_port "$remote_user@$remote_ip" "
-        echo 'Remote login successful'
-        remote_ip=\$(curl -s https://api.ipify.org)
-        remote_country=\$(geoiplookup \$remote_ip | awk '{str=\"\"; for(i=4;i<=NF;i++) str=str\" \"\$i; print str}')
-        echo \"Remote Server IP: \$remote_ip\"
-        echo \"Remote Server Country: \$remote_country\"
-        
-        whois \"$website\"
-    " > "$whois_file"
-    
-    # Check if WHOIS lookup was successful
-    if [ $? -eq 0 ] && [ -f "$whois_file" ]; then
-        log_message "WHOIS lookup completed and saved successfully."
-        log_message "WHOIS file location: $whois_file"
-        log_message "WHOIS file size: $(du -h "$whois_file" | cut -f1)"
-    else
-        log_message "WHOIS lookup failed or file not saved."
-        return 1
-    fi
-    
+    log_message "Performing WHOIS lookup..."
+    sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "whois $website" > "$whois_file"
+    log_message "WHOIS lookup completed. Results saved to $whois_file."
+
     # Perform nmap scan
-    log_message "Performing nmap scan for $website..."
-    sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p $remote_port "$remote_user@$remote_ip" "
-        nmap \"$website\"
-    " > "$nmap_file"
-    
-    # Check if nmap scan was successful
-    if [ $? -eq 0 ] && [ -f "$nmap_file" ]; then
-        log_message "nmap scan completed and saved successfully."
-        log_message "nmap result file location: $nmap_file"
-        log_message "nmap file size: $(du -h "$nmap_file" | cut -f1)"
-        return 0
-    else
-        log_message "nmap scan failed or file not saved."
-        return 1
-    fi
+    log_message "Performing nmap scan..."
+    nmap -Pn -A -T4 "$website" > "$nmap_file"
+    log_message "nmap scan completed. Results saved to $nmap_file."
+
+    return 0
 }
 
-# Check if other required packages are installed
-required_packages=(curl git build-essential libssl-dev libcurl4-openssl-dev libnet-ssleay-perl perl cpanminus geoip-bin sshpass nmap)
-for pkg in "${required_packages[@]}"; do
-    check_and_install $pkg
+# Install necessary packages
+log_message "Installing necessary packages..."
+packages=( "curl" "geoip-bin" "whois" "nmap" "sshpass" "jq" )
+for pkg in "${packages[@]}"; do
+    if ! dpkg -l | grep -qw "$pkg"; then
+        log_message "Installing $pkg..."
+        sudo apt update >> "$LOG_FILE" 2>&1
+        sudo apt install $pkg -y >> "$LOG_FILE" 2>&1
+    fi
 done
+
+# Install or update nipe
+if [ ! -d "/opt/nipe" ]; then
+    log_message "Installing nipe..."
+    sudo git clone https://github.com/htrgouvea/nipe /opt/nipe >> "$LOG_FILE" 2>&1
+else
+    log_message "Updating nipe..."
+    cd /opt/nipe
+    sudo git pull >> "$LOG_FILE" 2>&1
+fi
+
+cd /opt/nipe
+sudo cpanm --installdeps . >> "$LOG_FILE" 2>&1
+sudo perl nipe.pl install >> "$LOG_FILE" 2>&1
 
 # Ensure Tor service is running
 if ! systemctl is-active --quiet tor; then
