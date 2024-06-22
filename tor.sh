@@ -7,6 +7,7 @@ log_message() {
     echo "$(date) - $1" | tee -a "$LOG_FILE"
 }
 
+#New
 # Function to check Tor status
 check_tor_status() {
     log_message "Checking Tor status..."
@@ -17,7 +18,7 @@ check_tor_status() {
 
     #Custom
     html_content=$(curl -s "https://whatismyipaddress.com/ip/$current_ip")
-    tor_ip_country=$(whois $current_ip | grep -i "country")
+    tor_ip_country=$(whois $current_ip | grep -i "country" | awk '{print $2}')
     #tor_country_full=$(echo "$html_content" | grep -oP '<th>Country:</th><td>\K[^<]*')
     
     if curl -s https://check.torproject.org | grep -q "Congratulations"; then
@@ -26,7 +27,8 @@ check_tor_status() {
         tor_city=$(echo $tor_info | jq -r .city)
         log_message "Tor is working properly."
         log_message "Tor IP: $current_ip"
-        log_message "Tor Country: $tor_ip_country"
+        log_message "Tor IP: $tor_ip_country"
+        #log_message "Tor Country: $tor_ip_country"
         #log_message "Tor Location: $tor_city, $tor_country"
         return 0
     else
