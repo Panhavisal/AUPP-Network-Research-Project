@@ -11,7 +11,9 @@ log_message() {
 check_tor_status() {
     log_message "Checking Tor status..."
     current_ip=$(curl -s https://api.ipify.org)
+    current_tor_country=$(geoiplookup $current_ip | awk '{print $4$5}')
     log_message "Current IP: $current_ip"
+    log_message "Current Country: $current_tor_country (Local DB)"
 
     #Custom
     html_content=$(curl -s "https://whatismyipaddress.com/ip/$current_ip")
