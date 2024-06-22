@@ -2,7 +2,19 @@
 
 # Install necessary tools
 sudo apt update
-sudo apt install -y tor curl jq
+sudo apt install -y tor curl jq perl
+
+# Check if Nipe is installed
+if [ ! -d "$HOME/Nipe" ]; then
+    echo "Nipe is not installed. Installing Nipe..."
+    cd $HOME
+    git clone https://github.com/htrgouvea/nipe
+    cd nipe
+    sudo cpan install Switch JSON LWP::UserAgent
+else
+    echo "Nipe is already installed."
+    cd $HOME/nipe
+fi
 
 # Start the Tor service
 sudo service tor start
@@ -39,4 +51,17 @@ if [ -z "$TOR_COUNTRY" ]; then
     echo "Failed to retrieve the country information."
 else
     echo "Tor IP's country: $TOR_COUNTRY"
+fi
+
+# Start Nipe
+cd $HOME/nipe
+sudo perl nipe.pl start
+
+# Check Nipe status
+NIPE_STATUS=$(sudo perl nipe.pl status | grep -o "activated")
+
+if [ "$NIPE_STATUS" == "activated" ]; then
+    echo "Nipe is running."
+else
+    echo "Failed to start Nipe."
 fi
