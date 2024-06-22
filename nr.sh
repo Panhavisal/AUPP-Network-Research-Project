@@ -9,6 +9,13 @@ log_message() {
     echo "$(date) - $1" | tee -a "$LOG_FILE"
 }
 
+# Function to update GeoIP database
+update_geoip_db() {
+    log_message "Updating GeoIP database..."
+    sudo geoipupdate >> "$LOG_FILE" 2>&1
+    log_message "GeoIP database update completed."
+}
+
 # Function to check Tor status
 check_tor_status() {
     log_message "Checking Tor status..."
@@ -51,45 +58,51 @@ remote_login_and_check() {
     log_message "Attempting to log in to remote server $remote_ip on port $remote_port..."
 
     echo 'Remote login successful'
-    remote_ip=$(sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "curl -s https://api.ipify.org")
+    remote_info=$(sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "curl -s https://api.ipify.org && geoiplookup \$(curl -s https://api.ipify.org) | awk '{str=\"\"; for(i=4;i<=NF;i++) str=str\" \"\$i; print str}'")
+    remote_ip=$(echo "$remote_info" | head -n 1)
+    remote_country=$(echo "$remote_info" | tail -n 1)
     echo "Remote IP fetched: $remote_ip"
-    #remote_country=$(sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "curl -s https://ipgeolocation.io/ip-location/${remote_ip}?fields=country_name" | jq -r '.country_name')
-    remote_country=$(geoiplookup $remote_ip | awk '{str=""; for(i=4;i<=NF;i++) str=str" "$i; print str}')
-    #remote_country=$(sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "geoiplookup $remote_ip | awk '{str=""; for(i=4;i<=NF;i++) str=str" "$i; print str}'")
-    echo "Remote Server Country: $remote_country"
 
     # Connect to Server B and perform WHOIS lookup
     log_message "Performing WHOIS lookup..."
     sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "whois $website" > "$whois_file"
     log_message "WHOIS lookup completed. Results saved to $whois_file."
 
-    # Perform nmap scan
+    # Connect to Server B and perform nmap scan
     log_message "Performing nmap scan..."
-    nmap -Pn -A -T4 "$website" > "$nmap_file"
+    sshpass -p "$remote_password" ssh -p "$remote_port" "$remote_user@$remote_ip" "nmap -Pn -A -T4 $website" > "$nmap_file"
     log_message "nmap scan completed. Results saved to $nmap_file."
 
     return 0
 }
 
 # Install necessary packages
-log_message "Installing necessary packages..."
-packages=( "curl" "geoip-bin" "whois" "nmap" "sshpass" "jq" )
+log_message "Checking and installing necessary packages..."
+packages=( "curl" "geoip-bin" "whois" "nmap" "sshpass" "jq" "geoipupdate" )
 for pkg in "${packages[@]}"; do
-    if ! dpkg -l | grep -qw "$pkg"; then
+    if dpkg -l | grep -qw "$pkg"; then
+        log_message "$pkg is already installed."
+    else
         log_message "Installing $pkg..."
         sudo apt update >> "$LOG_FILE" 2>&1
         sudo apt install $pkg -y >> "$LOG_FILE" 2>&1
+        log_message "$pkg installation completed."
     fi
 done
 
-# Install or update nipe
+# Update GeoIP database
+update_geoip_db
+
+# Check for and install/update nipe
 if [ ! -d "/opt/nipe" ]; then
-    log_message "Installing nipe..."
+    log_message "Nipe is not installed. Installing nipe..."
     sudo git clone https://github.com/htrgouvea/nipe /opt/nipe >> "$LOG_FILE" 2>&1
+    log_message "Nipe installation completed."
 else
-    log_message "Updating nipe..."
+    log_message "Nipe is already installed. Updating nipe..."
     cd /opt/nipe
     sudo git pull >> "$LOG_FILE" 2>&1
+    log_message "Nipe update completed."
 fi
 
 cd /opt/nipe
@@ -98,6 +111,7 @@ sudo perl nipe.pl install >> "$LOG_FILE" 2>&1
 
 # Ensure Tor service is running
 if ! systemctl is-active --quiet tor; then
+    log_message "Tor is not running. Starting Tor service..."
     sudo systemctl start tor >> "$LOG_FILE" 2>&1
     log_message "Tor service started."
 else
