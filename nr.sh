@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Get the directory of the script
-SCRIPT_DIR="$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="$SCRIPT_DIR/tor_setup.log"
 
 # Function to log messages
