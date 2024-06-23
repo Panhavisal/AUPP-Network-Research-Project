@@ -11,7 +11,6 @@ Welcome to S35, a Secure Network Configuration Script designed by Elwood. This s
 - **Remote Operations**: Allows remote login to a specified server and performs WHOIS lookups and nmap scans for a given website.
 - **Configuration Management**: Ensures that the Tor configuration file (`torrc`) contains the necessary `SocksPort 9050` entry.
 - **Nipe Integration**: Installs and manages the Nipe tool to route all traffic through the Tor network.
-- **Cool Startup Header**: Displays a colorful and visually appealing startup header using `figlet` and `lolcat`.
 
 ## Prerequisites
 
@@ -22,10 +21,7 @@ Ensure that your system has the following packages installed:
 - `whois`
 - `nmap`
 - `sshpass`
-- `jq`
 - `geoipupdate`
-- `figlet`
-- `lolcat`
 
 The script will check for these packages and install them if they are not already present.
 
@@ -38,7 +34,7 @@ The script will check for these packages and install them if they are not alread
 
 2. Run the script:
     ```bash
-    ./nr.sh
+    sudo ./nr.sh
     ```
 
 ## Usage
