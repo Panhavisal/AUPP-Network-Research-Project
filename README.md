@@ -1,10 +1,21 @@
-# Remote Server Scan Script
+# S35 - Secure Network Configuration Script
 
-This script is designed to perform WHOIS lookups and nmap scans on a remote server. The results of these operations are saved in the same directory where the script is executed. The script also updates the GeoIP database and checks the status of the Tor service.
+## Introduction
+
+Welcome to S35, a Secure Network Configuration Script designed by Elwood. This script is primarily focused on enhancing your network security by automating several crucial tasks including updating GeoIP databases, checking the status of the Tor network, and performing remote logins, WHOIS lookups, and nmap scans. The script also ensures that the Tor service is configured correctly and actively running on your system.
+
+## Features
+
+- **Automatic GeoIP Database Update**: Keeps your GeoIP database up-to-date to ensure accurate geolocation information.
+- **Tor Network Status Check**: Verifies if the Tor network is functioning correctly by checking your current IP address and country through both local and WHOIS databases.
+- **Remote Operations**: Allows remote login to a specified server and performs WHOIS lookups and nmap scans for a given website.
+- **Configuration Management**: Ensures that the Tor configuration file (`torrc`) contains the necessary `SocksPort 9050` entry.
+- **Nipe Integration**: Installs and manages the Nipe tool to route all traffic through the Tor network.
+- **Cool Startup Header**: Displays a colorful and visually appealing startup header using `figlet` and `lolcat`.
 
 ## Prerequisites
 
-Before running the script, ensure that the following packages are installed on your local server:
+Ensure that your system has the following packages installed:
 
 - `curl`
 - `geoip-bin`
@@ -13,20 +24,58 @@ Before running the script, ensure that the following packages are installed on y
 - `sshpass`
 - `jq`
 - `geoipupdate`
+- `figlet`
+- `lolcat`
 
-You can install these packages using the script itself, which will check and install any missing packages.
+The script will check for these packages and install them if they are not already present.
 
-## How It Works
+## Installation
 
-1. **Updating GeoIP Database**: The script updates the GeoIP database to ensure accurate location information.
-2. **Checking Tor Status**: The script verifies if the Tor service is running and functioning correctly.
-3. **Remote Login and Operations**: The script logs into a remote server using `sshpass`, performs a WHOIS lookup, and executes an nmap scan on the specified website.
-4. **Saving Results**: The results of the WHOIS lookup and nmap scan are saved in the same directory where the script is executed.
+1. Make the script executable:
+    ```bash
+    chmod +x nr.sh
+    ```
+
+2. Run the script:
+    ```bash
+    ./nr.sh
+    ```
 
 ## Usage
 
-1. Clone the repository:
+Upon running the script, it will:
 
-   ```sh
-   git clone https://github.com/yourusername/repo-name.git
-   cd repo-name
+1. Display a cool startup header with the name "S35", your name, and the script title.
+2. Check and install the necessary packages.
+3. Update the GeoIP database.
+4. Ensure that the Tor configuration file (`torrc`) includes `SocksPort 9050`.
+5. Check the status of the Tor network.
+6. Install and start Nipe to route traffic through the Tor network.
+7. Prompt you to enter a website to scan, then perform a remote login, WHOIS lookup, and nmap scan on the specified website.
+
+## Example Output
+
+```plaintext
+*****************************************************
+*                                                   *
+*                      S35                          *
+*           Secure Network Configuration            *
+*                                                   *
+*****************************************************
+Name: Elwood
+Script Title: Remote Scanner
+***********************************
+
+Checking and installing necessary packages on local server...
+Updating GeoIP database...
+Checking if SocksPort 9050 is in torrc...
+SocksPort 9050 is already present in torrc.
+Checking Tor status...
+Tor is working properly.
+Nipe is active and running.
+Enter a website to SCAN: example.com
+Performing WHOIS lookup for example.com...
+WHOIS lookup completed and saved successfully.
+Performing nmap scan for example.com...
+nmap scan completed and saved successfully.
+Remote operations completed successfully. Script execution complete.
