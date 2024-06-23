@@ -47,6 +47,23 @@ check_tor_status() {
     fi
 }
 
+# Function to check and add SocksPort 9050 to torrc if not present
+check_and_add_socksport() {
+    log_message "Checking if SocksPort 9050 is in torrc..."
+    TORRC_FILE="/etc/tor/torrc"
+    if grep -q "^SocksPort 9050" "$TORRC_FILE"; then
+        log_message "SocksPort 9050 is already present in torrc."
+    else
+        log_message "SocksPort 9050 is not present in torrc. Adding it..."
+        echo "SocksPort 9050" | sudo tee -a "$TORRC_FILE" >> "$LOG_FILE" 2>&1
+        if [ $? -eq 0 ]; then
+            log_message "SocksPort 9050 added to torrc successfully."
+        else
+            log_message "Failed to add SocksPort 9050 to torrc."
+        fi
+    fi
+}
+
 # Function to perform remote login, WHOIS lookup, and nmap scan
 remote_login_and_check() {
     local remote_ip="192.168.88.180"
@@ -131,6 +148,9 @@ fi
 cd /opt/nipe
 sudo cpanm --installdeps . >> "$LOG_FILE" 2>&1
 sudo perl nipe.pl install >> "$LOG_FILE" 2>&1
+
+# Check and add SocksPort 9050 to torrc if not present
+check_and_add_socksport
 
 # Ensure Tor service is running on local server
 if ! systemctl is-active --quiet tor; then
