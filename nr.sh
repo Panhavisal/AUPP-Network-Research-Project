@@ -12,24 +12,26 @@ log_message() {
 # Function to update GeoIP database
 update_geoip_db() {
     log_message "Updating GeoIP database..."
-    sudo geoipupdate >> "$LOG_FILE" 2>&1
-    log_message "GeoIP database update completed."
+    if sudo geoipupdate >> "$LOG_FILE" 2>&1; then
+        log_message "GeoIP database update completed."
+    else
+        log_message "GeoIP database update failed."
+    fi
 }
 
 # Function to check Tor status
 check_tor_status() {
     log_message "Checking Tor status..."
     current_ip=$(curl -s https://api.ipify.org)
-    current_tor_country=$(geoiplookup $current_ip | awk '{str=""; for(i=4;i<=NF;i++) str=str" "$i; print str}')
+    current_tor_country=$(geoiplookup "$current_ip" | awk '{str=""; for(i=4;i<=NF;i++) str=str" "$i; print str}')
     log_message "Current IP: $current_ip"
     log_message "Current Country: $current_tor_country (Local DB)"
 
-    tor_ip_country=$(whois $current_ip | grep -i "country" | tail -n 1 | awk '{print $2}' )
+    tor_ip_country=$(whois "$current_ip" | grep -i "country" | tail -n 1 | awk '{print $2}')
 
     log_message "Verifying TOR Connection..."
 
     if curl -s https://check.torproject.org | grep -q "Congratulations"; then
-        tor_info=$(curl -s "https://ipapi.co/${current_ip}/json/")
         log_message "Tor is working properly."
         log_message "Tor IP: $current_ip"
         if [ -z "$tor_ip_country" ]; then
@@ -52,65 +54,43 @@ remote_login_and_check() {
     local remote_user="tc"
     local remote_password="tc"
     local website="$1"
-     local whois_file="$SCRIPT_DIR/${website}_full_whois.txt"
+    local whois_file="$SCRIPT_DIR/${website}_full_whois.txt"
     local nmap_file="$SCRIPT_DIR/${website}_nmap_result.txt"
 
     log_message "Attempting to log in to remote server $remote_ip on port $remote_port..."
 
-    # Fetch remote IP and Country
-    #remote_info=$(sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p "$remote_port" "$remote_user@$remote_ip" '
-    #    echo "Remote login successful"
-    #    remote_ip=$(curl -s https://api.ipify.org)
-    #    remote_country=$(geoiplookup $remote_ip | awk "{str=\"\"; for(i=4;i<=NF;i++) str=str\" \"$i; print str}")
-    #    echo "Remote Server IP: $remote_ip"
-    #    echo "Remote Server Country: $remote_country"
-    #')
-    #remote_ip=$(echo "$remote_info" | grep "Remote Server IP" | awk '{print $4}')
-    #remote_country=$(geoiplookup $remote_ip | awk '{str=""; for(i=4;i<=NF;i++) str=str" "$i; print str}')
-    #echo "Remote IP fetched: $remote_ip"
-    #echo "Remote Server Country: $remote_country"
+    sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p "$remote_port" "$remote_user@$remote_ip" <<-EOF
+        echo "Remote login successful"
+        remote_ip=\$(curl -s https://api.ipify.org)
+        echo "Remote Server IP: \$remote_ip"
+        remote_country=\$(geoiplookup "\$remote_ip" | awk '{str=""; for(i=4;i<=NF;i++) str=str" "\$i; print str}')
+        echo "Remote country: \$remote_country"
+EOF
 
     log_message "Hostname for WHOIS and nmap: $website"
 
-    #sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p $remote_port "$remote_user@$remote_ip" "
-    #    echo \"Remote login successful\"
-    #    remote_ip=$(curl -s https://api.ipify.org)
-    #    echo \"'Remote Server IP: $remote_ip'\"
-    #    remote_country=$(geoiplookup $remote_ip | awk "{str=\"\"; for(i=4;i<=NF;i++) str=str\" \"$i; print str}")
-    #    whois \"$website\"
-    #" > "$whois_file"
-
-    sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p $remote_port "$remote_user@$remote_ip" '
-        echo "Remote login successful"
-        remote_ip=$(curl -s https://api.ipify.org)
-        echo "Remote Server IP: $remote_ip"
-        remote_country=$(geoiplookup $remote_ip | awk "{str=\"\"; for(i=4;i<=NF;i++) str=str\" \"\$i; print str}")
-        echo "Remote country: $remote_country"
-        whois "$website"
-' | tee "$whois_file"
+    # Perform whois scan
+    log_message "Performing WHOIS lookup for $website..."
+    sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p "$remote_port" "$remote_user@$remote_ip" "whois \"$website\"" > "$whois_file"
 
     # Check if WHOIS lookup was successful
     if [ $? -eq 0 ] && [ -f "$whois_file" ]; then
         log_message "WHOIS lookup completed and saved successfully."
-        log_message "Path /opt/nipe"
-        log_message "WHOIS fFile name: $whois_file"
+        log_message "WHOIS file path: $whois_file"
         log_message "WHOIS file size: $(du -h "$whois_file" | cut -f1)"
     else
         log_message "WHOIS lookup failed or file not saved."
         return 1
     fi
-    
+
     # Perform nmap scan
     log_message "Performing nmap scan for $website..."
-    sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p $remote_port "$remote_user@$remote_ip" "
-        nmap \"$website\"
-    " > "$nmap_file"
-    
+    sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p "$remote_port" "$remote_user@$remote_ip" "nmap \"$website\"" > "$nmap_file"
+
     # Check if nmap scan was successful
     if [ $? -eq 0 ] && [ -f "$nmap_file" ]; then
         log_message "nmap scan completed and saved successfully."
-        log_message "Path /opt/nipe"
-        log_message "nmap result File name: $nmap_file"
+        log_message "nmap result file path: $nmap_file"
         log_message "nmap file size: $(du -h "$nmap_file" | cut -f1)"
         return 0
     else
@@ -128,7 +108,7 @@ for pkg in "${packages[@]}"; do
     else
         log_message "Installing $pkg..."
         sudo apt update >> "$LOG_FILE" 2>&1
-        sudo apt install $pkg -y >> "$LOG_FILE" 2>&1
+        sudo apt install "$pkg" -y >> "$LOG_FILE" 2>&1
         log_message "$pkg installation completed."
     fi
 done
