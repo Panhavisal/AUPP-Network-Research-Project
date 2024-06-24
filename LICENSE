@@ -1,6 +1,11 @@
+## License
+
+This project is now licensed under the MIT License, effective from [current date, e.g., June 24, 2024]:
+
+```
 MIT License
 
-Copyright (c) 2024 TONG Panhavisal
+Copyright (c) 2024 [your name]
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +24,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+**Note on Licensing:**
+- This license was added on [current date, e.g., June 24, 2024], after the completion of the initial codebase.
+- All code and documentation in this repository, including past commits, are now covered under this license.
+- If you have been using this code prior to the license addition, please review the terms of the MIT License to ensure compliance.
+- For any questions regarding the licensing of this project, please contact [your contact information or preferred method of contact].
