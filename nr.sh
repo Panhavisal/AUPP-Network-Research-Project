@@ -116,7 +116,33 @@ EOF
     fi
 }
 
-# Function to check and install Perl modules
+# Function to automatically configure CPAN
+configure_cpan() {
+    log_message "Configuring CPAN..."
+    (
+        echo yes;
+        echo "/root/.cpan";
+        echo yes;
+        echo yes;
+        echo no;
+        echo no;
+        echo no;
+        echo "http://www.cpan.org";
+        echo "http://www.cpan.org";
+        echo yes;
+        echo yes;
+        echo yes;
+        echo yes;
+    ) | sudo cpan >> "$LOG_FILE" 2>&1
+
+    if [ $? -eq 0 ]; then
+        log_message "CPAN configuration completed successfully."
+    else
+        log_message "CPAN configuration failed. Please check the logs."
+    fi
+}
+
+# Updated function to check and install Perl modules non-interactively
 install_perl_module() {
     local module=$1
     if perl -M"$module" -e 1 2>/dev/null; then
@@ -145,6 +171,9 @@ for pkg in "${packages[@]}"; do
         log_message "$pkg installation completed."
     fi
 done
+
+# Call the CPAN configuration function
+configure_cpan
 
 # Check and install Perl Config::Simple module
 install_perl_module "Config::Simple"
