@@ -1,6 +1,6 @@
 ## License
 
-This project is now licensed under the MIT License, effective from [current date, e.g., June 24, 2024]:
+This project is now licensed under the MIT License, effective from June 24, 2024:
 
 ```
 MIT License
