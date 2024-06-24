@@ -175,8 +175,10 @@ done
 # Call the CPAN configuration function
 configure_cpan
 
-# Check and install Perl Config::Simple module
+# Install required Perl modules
 install_perl_module "Config::Simple"
+install_perl_module "Try::Tiny"
+install_perl_module "JSON"
 
 # Update GeoIP database on local server
 update_geoip_db
