@@ -123,8 +123,12 @@ install_perl_module() {
         log_message "Perl module $module is already installed."
     else
         log_message "Installing Perl module $module..."
-        sudo cpan -i "$module" >> "$LOG_FILE" 2>&1
-        log_message "Perl module $module installation completed."
+        yes | sudo cpan -T "$module" >> "$LOG_FILE" 2>&1
+        if [ $? -eq 0 ]; then
+            log_message "Perl module $module installation completed successfully."
+        else
+            log_message "Failed to install Perl module $module. Please check the logs."
+        fi
     fi
 }
 
