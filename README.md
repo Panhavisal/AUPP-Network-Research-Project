@@ -1,77 +1,110 @@
-# S35 - Secure Network Configuration Script
+# Network Reconnaissance Script (nr.sh)
 
 ## Introduction
 
-Welcome to S35, a Secure Network Configuration Script designed by Elwood. This script is primarily focused on enhancing your network security by automating several crucial tasks including updating GeoIP databases, checking the status of the Tor network, and performing remote logins, WHOIS lookups, and nmap scans. The script also ensures that the Tor service is configured correctly and actively running on your system.
+This bash script, `nr.sh`, is a comprehensive network reconnaissance tool designed to perform various security checks and gather information about specified websites. It utilizes Tor for anonymity and includes features for both local and remote operations.
 
 ## Features
 
-- **Automatic GeoIP Database Update**: Keeps your GeoIP database up-to-date to ensure accurate geolocation information.
-- **Tor Network Status Check**: Verifies if the Tor network is functioning correctly by checking your current IP address and country through both local and WHOIS databases.
-- **Remote Operations**: Allows remote login to a specified server and performs WHOIS lookups and nmap scans for a given website.
-- **Configuration Management**: Ensures that the Tor configuration file (`torrc`) contains the necessary `SocksPort 9050` entry.
-- **Nipe Integration**: Installs and manages the Nipe tool to route all traffic through the Tor network.
+- Tor network connectivity check and setup
+- GeoIP database update
+- Installation and configuration of Nipe (Tor routing tool)
+- Remote server login and operations
+- WHOIS lookup
+- Nmap scanning
+- Logging of all operations
+
+## What it Does
+
+1. Sets up and verifies Tor connectivity on the local machine
+2. Updates GeoIP database for accurate location information
+3. Installs and configures Nipe for improved anonymity
+4. Performs a remote login to a specified server
+5. Conducts a WHOIS lookup for a user-specified website
+6. Executes an Nmap scan on the target website
+7. Logs all operations and results for later analysis
 
 ## Prerequisites
 
-Ensure that your system has the following packages installed:
+- Ubuntu or Debian-based Linux distribution
+- Superuser (sudo) access
+- Internet connection
+- The following packages (script will attempt to install if missing):
+  - curl
+  - geoip-bin
+  - whois
+  - nmap
+  - sshpass
+  - jq
+  - geoipupdate
+  - tor
+- Perl with Config::Simple module
+- Access to a remote server (for remote operations)
 
-- `curl`
-- `geoip-bin`
-- `whois`
-- `nmap`
-- `sshpass`
-- `geoipupdate`
+## How to Use
 
-The script will check for these packages and install them if they are not already present.
+1. Clone this repository or download the `nr.sh` script.
+2. Make the script executable:
+   ```
+   chmod +x nr.sh
+   ```
+3. Run the script with sudo privileges:
+   ```
+   sudo ./nr.sh
+   ```
+4. Follow the prompts to enter the target website for scanning.
+5. Review the logs in the script directory for detailed output.
 
-## Installation
+## Sample Output
 
-1. Make the script executable:
-    ```bash
-    chmod +x nr.sh
-    ```
+```
+2024-06-24 10:15:30 - Script execution started.
+2024-06-24 10:15:31 - Checking and installing necessary packages on local server...
+2024-06-24 10:15:45 - Updating GeoIP database...
+2024-06-24 10:16:00 - Checking Tor status...
+2024-06-24 10:16:05 - Current IP: 123.45.67.89
+2024-06-24 10:16:06 - Current Country: Netherlands (Local DB)
+2024-06-24 10:16:10 - Tor is working properly.
+2024-06-24 10:16:15 - Starting nipe...
+2024-06-24 10:16:25 - Nipe is active and running.
+2024-06-24 10:16:30 - User entered website: example.com
+2024-06-24 10:16:35 - Attempting to log in to remote server 192.168.88.180 on port 51322...
+2024-06-24 10:16:40 - Performing WHOIS lookup for example.com...
+2024-06-24 10:16:50 - WHOIS lookup completed and saved successfully.
+2024-06-24 10:16:55 - Performing nmap scan for example.com...
+2024-06-24 10:17:30 - nmap scan completed and saved successfully.
+2024-06-24 10:17:31 - Remote operations completed successfully. Script execution complete.
+2024-06-24 10:17:32 - Script execution finished.
+```
 
-2. Run the script:
-    ```bash
-    sudo ./nr.sh
-    ```
+## Caution
 
-## Usage
+This tool is intended for ethical use only. Always ensure you have permission to scan and gather information about any target websites or systems.
 
-Upon running the script, it will:
+## License
 
-1. Display a cool startup header with the name "S35", your name, and the script title.
-2. Check and install the necessary packages.
-3. Update the GeoIP database.
-4. Ensure that the Tor configuration file (`torrc`) includes `SocksPort 9050`.
-5. Check the status of the Tor network.
-6. Install and start Nipe to route traffic through the Tor network.
-7. Prompt you to enter a website to scan, then perform a remote login, WHOIS lookup, and nmap scan on the specified website.
+This project is licensed under the MIT License:
 
-## Example Output
+```
+MIT License
 
-```plaintext
-*****************************************************
-*                                                   *
-*                      S35                          *
-*           Secure Network Configuration            *
-*                                                   *
-*****************************************************
-Name: Elwood
-Script Title: Remote Scanner
-***********************************
+Copyright (c) [year] [your name]
 
-Checking and installing necessary packages on local server...
-Updating GeoIP database...
-Checking if SocksPort 9050 is in torrc...
-SocksPort 9050 is already present in torrc.
-Checking Tor status...
-Tor is working properly.
-Nipe is active and running.
-Enter a website to SCAN: example.com
-Performing WHOIS lookup for example.com...
-WHOIS lookup completed and saved successfully.
-Performing nmap scan for example.com...
-nmap scan completed and saved successfully.
-Remote operations completed successfully. Script execution complete.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
