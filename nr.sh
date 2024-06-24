@@ -235,13 +235,15 @@ if check_tor_status; then
     log_message "Tor is functioning correctly."
     #Testing Function
     log_message "Testing NIPE Function..."
-    sleep 10
+    sleep 5
     test_current_ip=$(curl -s https://api.ipify.org)
+    #Delay To Get Refresh get New IP
+    sleep 10
     test_current_ip=$(curl -s https://api.ipify.org)
     test_current_tor_country=$(geoiplookup "$current_ip" | awk '{str=""; for(i=4;i<=NF;i++) str=str" "$i; print str}')
     if [ "$test_current_ip" != "$current_ip" ]; then
         log_message "NIPE functionality verified: IP address changed successfully"
-        log_message "All Functioning are working correctly. Proceeding to website input."
+        log_message "All Function are working correctly. Proceeding to website input."
     else
         log_message "NIPE functionality check failed: IP address remains unchanged."
         log_message "Function check failed. Proceeding to website input anyway."
