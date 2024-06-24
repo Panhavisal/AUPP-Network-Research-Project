@@ -118,7 +118,7 @@ EOF
 
 # Install necessary packages on local server
 log_message "Checking and installing necessary packages on local server..."
-packages=( "curl" "geoip-bin" "whois" "nmap" "sshpass" "jq" "geoipupdate" )
+packages=( "curl" "geoip-bin" "whois" "nmap" "sshpass" "jq" "geoipupdate" "tor" )
 for pkg in "${packages[@]}"; do
     if dpkg -l | grep -qw "$pkg"; then
         log_message "$pkg is already installed."
