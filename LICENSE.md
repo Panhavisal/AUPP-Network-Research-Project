@@ -27,7 +27,7 @@ SOFTWARE.
 ```
 
 **Note on Licensing:**
-- This license was added on [current date, e.g., June 24, 2024], after the completion of the initial codebase.
+- This license was added on June 24, 2024, after the completion of the initial codebase.
 - All code and documentation in this repository, including past commits, are now covered under this license.
 - If you have been using this code prior to the license addition, please review the terms of the MIT License to ensure compliance.
-- For any questions regarding the licensing of this project, please contact [your contact information or preferred method of contact].
+- For any questions regarding the licensing of this project, please contact me.
