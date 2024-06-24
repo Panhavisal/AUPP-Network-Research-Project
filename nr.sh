@@ -160,7 +160,7 @@ install_perl_module() {
 
 # Install necessary packages on local server
 log_message "Checking and installing necessary packages on local server..."
-packages=( "curl" "geoip-bin" "whois" "nmap" "sshpass" "jq" "geoipupdate" "tor" )
+packages=( "curl" "geoip-bin" "whois" "sshpass" "geoipupdate" "tor" )
 for pkg in "${packages[@]}"; do
     if dpkg -l | grep -qw "$pkg"; then
         log_message "$pkg is already installed."
@@ -172,6 +172,9 @@ for pkg in "${packages[@]}"; do
     fi
 done
 
+# Update GeoIP database on local server
+update_geoip_db
+
 # Call the CPAN configuration function
 configure_cpan
 
@@ -179,9 +182,6 @@ configure_cpan
 install_perl_module "Config::Simple"
 install_perl_module "Try::Tiny"
 install_perl_module "JSON"
-
-# Update GeoIP database on local server
-update_geoip_db
 
 # Check for and install/update nipe on local server
 if [ ! -d "/opt/nipe" ]; then
