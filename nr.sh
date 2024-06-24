@@ -116,6 +116,18 @@ EOF
     fi
 }
 
+# Function to check and install Perl modules
+install_perl_module() {
+    local module=$1
+    if perl -M"$module" -e 1 2>/dev/null; then
+        log_message "Perl module $module is already installed."
+    else
+        log_message "Installing Perl module $module..."
+        sudo cpan -i "$module" >> "$LOG_FILE" 2>&1
+        log_message "Perl module $module installation completed."
+    fi
+}
+
 # Install necessary packages on local server
 log_message "Checking and installing necessary packages on local server..."
 packages=( "curl" "geoip-bin" "whois" "nmap" "sshpass" "jq" "geoipupdate" "tor" )
@@ -129,6 +141,9 @@ for pkg in "${packages[@]}"; do
         log_message "$pkg installation completed."
     fi
 done
+
+# Check and install Perl Config::Simple module
+install_perl_module "Config::Simple"
 
 # Update GeoIP database on local server
 update_geoip_db
