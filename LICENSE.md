@@ -5,7 +5,7 @@ This project is now licensed under the MIT License, effective from June 24, 2024
 ```
 MIT License
 
-Copyright (c) 2024 [your name]
+Copyright (c) 2024 TONG Panhavisal
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
