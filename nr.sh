@@ -235,10 +235,10 @@ if check_tor_status; then
     log_message "Tor is functioning correctly."
     #Testing Function
     log_message "Testing NIPE Function..."
-    sleep 5
+    sleep 15
     test_current_ip=$(curl -s https://api.ipify.org)
     #Delay To Get Refresh get New IP
-    sleep 10
+    sleep 15
     test_current_ip=$(curl -s https://api.ipify.org)
     test_current_tor_country=$(geoiplookup "$current_ip" | awk '{str=""; for(i=4;i<=NF;i++) str=str" "$i; print str}')
     if [ "$test_current_ip" != "$current_ip" ]; then
