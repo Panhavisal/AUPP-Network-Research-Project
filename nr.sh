@@ -9,18 +9,32 @@ log_message() {
     echo "$(date) - $1" | tee -a "$LOG_FILE"
 }
 
+# Function to check internet connection
+check_internet_connection() {
+    log_message "Checking internet connection..."
+    if ping -c 1 8.8.8.8 &> /dev/null; then
+        log_message "Internet connection is available."
+    else
+        log_message "No internet connection. Stopping script."
+        exit 1
+    fi
+}
+
 # Function to update GeoIP database
 update_geoip_db() {
+    check_internet_connection
     log_message "Updating GeoIP database..."
     if sudo geoipupdate >> "$LOG_FILE" 2>&1; then
         log_message "GeoIP database update completed."
     else
         log_message "GeoIP database update failed."
+        check_internet_connection
     fi
 }
 
 # Function to check Tor status
 check_tor_status() {
+    check_internet_connection
     log_message "Checking Tor status..."
     current_ip=$(curl -s https://api.ipify.org)
     current_tor_country=$(geoiplookup "$current_ip" | awk '{str=""; for(i=4;i<=NF;i++) str=str" "$i; print str}')
@@ -43,6 +57,7 @@ check_tor_status() {
         return 0
     else
         log_message "Tor configuration check failed."
+        check_internet_connection
         return 1
     fi
 }
@@ -60,12 +75,14 @@ check_and_add_socksport() {
             log_message "SocksPort 9050 added to torrc successfully."
         else
             log_message "Failed to add SocksPort 9050 to torrc."
+            check_internet_connection
         fi
     fi
 }
 
 # Function to perform remote login, WHOIS lookup, and nmap scan
 remote_login_and_check() {
+    check_internet_connection
     local remote_ip="192.168.88.180"
     local remote_port="51322"
     local remote_user="tc"
@@ -87,6 +104,7 @@ EOF
     log_message "Hostname for WHOIS and nmap: $website"
 
     # Perform whois scan
+    check_internet_connection
     log_message "Performing WHOIS lookup for $website..."
     sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p "$remote_port" "$remote_user@$remote_ip" "whois \"$website\"" > "$whois_file"
 
@@ -97,10 +115,12 @@ EOF
         log_message "WHOIS file size: $(du -h "$whois_file" | cut -f1)"
     else
         log_message "WHOIS lookup failed or file not saved."
+        check_internet_connection
         return 1
     fi
 
     # Perform nmap scan
+    check_internet_connection
     log_message "Performing nmap scan for $website..."
     sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p "$remote_port" "$remote_user@$remote_ip" "nmap \"$website\"" > "$nmap_file"
 
@@ -112,6 +132,7 @@ EOF
         return 0
     else
         log_message "nmap scan failed or file not saved."
+        check_internet_connection
         return 1
     fi
 }
@@ -139,11 +160,13 @@ configure_cpan() {
         log_message "CPAN configuration completed successfully."
     else
         log_message "CPAN configuration failed. Please check the logs."
+        check_internet_connection
     fi
 }
 
 # Updated function to check and install Perl modules non-interactively
 install_perl_module() {
+    check_internet_connection
     local module=$1
     if perl -M"$module" -e 1 2>/dev/null; then
         log_message "Perl module $module is already installed."
@@ -154,6 +177,7 @@ install_perl_module() {
             log_message "Perl module $module installation completed successfully."
         else
             log_message "Failed to install Perl module $module. Please check the logs."
+            check_internet_connection
         fi
     fi
 }
@@ -169,8 +193,12 @@ for pkg in "${packages[@]}"; do
         sudo apt update >> "$LOG_FILE" 2>&1
         sudo apt install "$pkg" -y >> "$LOG_FILE" 2>&1
         log_message "$pkg installation completed."
+        check_internet_connection
     fi
 done
+
+# Check internet connection
+check_internet_connection
 
 # Update GeoIP database on local server
 update_geoip_db
@@ -193,6 +221,7 @@ else
     cd /opt/nipe
     sudo git pull >> "$LOG_FILE" 2>&1
     log_message "Nipe update completed."
+    check_internet_connection
 fi
 
 cd /opt/nipe
@@ -207,6 +236,7 @@ if ! systemctl is-active --quiet tor; then
     log_message "Tor is not running. Starting Tor service..."
     sudo systemctl start tor >> "$LOG_FILE" 2>&1
     log_message "Tor service started."
+    check_internet_connection
 else
     log_message "Tor service is already running."
 fi
@@ -228,6 +258,7 @@ else
     sleep 10
     nipe_status=$(sudo perl /opt/nipe/nipe.pl status)
     log_message "Nipe status after restart: $nipe_status"
+    check_internet_connection
 fi
 
 # Check Tor status once on local server
@@ -247,9 +278,11 @@ if check_tor_status; then
     else
         log_message "NIPE functionality check failed: IP address remains unchanged."
         log_message "Function check failed. Proceeding to website input anyway."
+        check_internet_connection
     fi
 else
     log_message "Tor configuration check failed. Proceeding to website input anyway."
+    check_internet_connection
 fi
 
 # Ask user for website input on local server
@@ -261,6 +294,7 @@ if remote_login_and_check "$website"; then
     log_message "Remote operations completed successfully. Script execution complete."
 else
     log_message "Remote operations failed. Script execution complete."
+    check_internet_connection
 fi
 
 log_message "Script execution finished."
