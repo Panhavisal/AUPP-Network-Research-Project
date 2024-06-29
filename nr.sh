@@ -12,7 +12,7 @@ log_message() {
 # Function to check internet connection
 check_internet_connection() {
     log_message "Checking internet connection..."
-    if ping -c 1 8.8.8.8 &> /dev/null; then
+    if curl -s --head http://www.google.com | grep "200 OK" > /dev/null; then
         log_message "Internet connection is available."
     else
         log_message "No internet connection. Stopping script."
@@ -125,7 +125,7 @@ EOF
     sshpass -p "$remote_password" ssh -o StrictHostKeyChecking=no -p "$remote_port" "$remote_user@$remote_ip" "nmap \"$website\"" > "$nmap_file"
 
     # Check if nmap scan was successful
-    if [ $? -eq 0 ] && [ -f "$nmap_file" ]; then
+    if [ $? -eq 0 ] && [ -f "$nmap_file"]; then
         log_message "nmap scan completed and saved successfully."
         log_message "nmap result file path: $nmap_file"
         log_message "nmap file size: $(du -h "$nmap_file" | cut -f1)"
@@ -182,6 +182,9 @@ install_perl_module() {
     fi
 }
 
+# Check internet connection
+check_internet_connection
+
 # Install necessary packages on local server
 log_message "Checking and installing necessary packages on local server..."
 packages=( "curl" "geoip-bin" "whois" "sshpass" "geoipupdate" "tor" )
@@ -196,9 +199,6 @@ for pkg in "${packages[@]}"; do
         check_internet_connection
     fi
 done
-
-# Check internet connection
-check_internet_connection
 
 # Update GeoIP database on local server
 update_geoip_db
