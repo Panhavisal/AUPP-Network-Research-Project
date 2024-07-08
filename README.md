@@ -57,7 +57,7 @@ This bash script, `nr.sh`, is a comprehensive network reconnaissance tool design
 
 ## Sample Output
 
-```
+```less
 2024-06-24 10:15:30 - Script execution started.
 2024-06-24 10:15:31 - Checking and installing necessary packages on local server...
 2024-06-24 10:15:45 - Updating GeoIP database...
